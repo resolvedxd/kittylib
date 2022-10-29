@@ -4,6 +4,12 @@
 #include "../utils/vec2.hpp"
 #include "texture.hpp"
 
+struct kvertex_t {
+  float x, y, z;
+  float rhw = 0;
+  color_t color;
+};
+
 class renderer_t
 {
   public:
@@ -29,11 +35,13 @@ class renderer_t
   virtual void circle_filled(float x, float y, float radius, color_t color, int segments) = 0;
   virtual void triangle(float x, float y, float w, float h, float angle, color_t color) = 0;
   virtual void triangle_filled(float x, float y, float w, float h, float angle, color_t color) = 0;
+  virtual void vertices(kvertex_t* vertices, int count, primitive_type_t type) = 0;
 
   // textures
   virtual texture_t* create_texture(int width, int height, texture_format_t format = FORMAT_ARGB) = 0;
 
-
+  // other
+  virtual void set_viewport(int x, int y, int width, int height) = 0;
 
   // Vector helpers
   inline void line(vec2_t p1, vec2_t p2, color_t color) {

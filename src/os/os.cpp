@@ -43,4 +43,5 @@ int kitty::os::message_box(const char* title, const char* message, kitty_message
 void kitty::error(const char* message) {
   kitty::os::message_box("Error", message, MESSAGEBOX_ERROR);
   printf("ERROR! %s\n", message);
+  exit(1);
 }

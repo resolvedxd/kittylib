@@ -17,7 +17,7 @@ struct hsv_t {
 
 // TODO: use unsigned char instead of int?
 struct color_t {
-    int a, r, g, b;
+    unsigned char a, r, g, b;
     color_t() = default;
     color_t(color_t col, int alpha) {
         this->r = col.r;

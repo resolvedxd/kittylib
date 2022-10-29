@@ -91,7 +91,12 @@ class font_t {
       if(!glyphs.contains(codepoint)) add_glyph(codepoint);
       
       const glyph_t glyph = glyphs[codepoint];
-      if(!glyph.texture) continue;
+      if (!glyph.texture) continue;
+      if (glyph.texture->initialized == false) {
+        // delete glyphs[codepoint];
+        glyphs.erase(codepoint);
+        add_glyph(codepoint);
+      }
       renderer->rect_textured(x + off + glyph.xoff + 0.5, y + glyph.yoff + 0.5, glyph.texture, color);
 
       // kerning

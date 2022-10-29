@@ -33,9 +33,15 @@ namespace kitty {
 
     int cursor_x, cursor_y;
     bool hide_cursor;
+
+    // this function will be called when a render is requested but the main thread is being blocked,
+    // for example when the window is being moved or resized. the window size is passed in the parameters, so you can
+    // change the renderer viewport to match the window size. 
+    // (implementing this is entirly optional)
+    void(*request_render)(int width, int height);
   }
 
   void error(const char* message);
 }
 
-#include "os/os.hpp"
+#include "os/os.cpp"

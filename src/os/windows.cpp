@@ -4,6 +4,20 @@ bool allow_hiding_cursor = true;
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
+    case WM_MOVE:
+      if (kitty::os::request_render) kitty::os::request_render(0, 0);
+      break;
+    case WM_SIZE:
+      if (kitty::os::request_render) kitty::os::request_render(LOWORD(lParam), HIWORD(lParam));
+      break;
+    // case WM_SIZING:
+    //   if (kitty::os::request_render && lParam) 
+    //     kitty::os::request_render(
+    //       ((RECT*)lParam)->right - ((RECT*)lParam)->left, 
+    //       ((RECT*)lParam)->bottom - ((RECT*)lParam)->top);
+    //   break;
+    
+
     case WM_DESTROY:
       PostQuitMessage(0);
       return 0;

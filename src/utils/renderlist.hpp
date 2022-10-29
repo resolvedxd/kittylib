@@ -15,28 +15,26 @@ struct textured_vertex_t {
   float u, v; // texture coordinates
 };
 
-enum renderable_type {
+struct two_textured_vertex_t {
+  float x, y, z, rhw;
+  unsigned long color;
+  float u1, v1; // texture1 coordinates
+  float u2, v2; // texture2 coordinates
+};
+
+enum renderable_type_t {
   PRIMITIVE,
   TEXTURE
 };
 
 class renderable_t {
   public:
-  renderable_type renderable_type;
-};
-
-enum primitive_type {
-    PT_POINTLIST             = 1,
-    PT_LINELIST              = 2,
-    PT_LINESTRIP             = 3,
-    PT_TRIANGLELIST          = 4,
-    PT_TRIANGLESTRIP         = 5,
-    PT_TRIANGLEFAN           = 6,
+  renderable_type_t renderable_type;
 };
 
 class primitive_t : public renderable_t {
   public:
-  primitive_t(primitive_type type, vertex_t* pvertices, int vertex_count) {
+  primitive_t(primitive_type_t type, vertex_t* pvertices, int vertex_count) {
     this->renderable_type = PRIMITIVE;
     this->primitive_type = type;
     
@@ -46,7 +44,7 @@ class primitive_t : public renderable_t {
 
     this->texture = nullptr;    
   };
-  primitive_t(primitive_type type, textured_vertex_t* pvertices, int vertex_count, texture_t* texture) {
+  primitive_t(primitive_type_t type, textured_vertex_t* pvertices, int vertex_count, texture_t* texture) {
     this->renderable_type = TEXTURE;
     this->primitive_type = type;
     
@@ -67,7 +65,7 @@ class primitive_t : public renderable_t {
     // }
     // delete texture;
   };
-  primitive_type primitive_type;
+  primitive_type_t primitive_type;
   std::vector<vertex_t> vertices;
   std::vector<textured_vertex_t> vertices_textured; // this is bad, i should make a second primitive type in the future
   int vertex_count;

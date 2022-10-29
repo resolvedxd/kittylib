@@ -11,7 +11,6 @@
 d3d9_renderer_t::d3d9_renderer_t() {
   LPDIRECT3D9 d3d = Direct3DCreate9(D3D_SDK_VERSION);
   
-  D3DPRESENT_PARAMETERS d3dpp;
   std::memset(&d3dpp, 0, sizeof(D3DPRESENT_PARAMETERS));
   d3dpp.Windowed = true;
   d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD; // discard old frames
@@ -35,17 +34,17 @@ bool d3d9_renderer_t::initialize(IDirect3DDevice9* device) {
 }
 
 void d3d9_renderer_t::begin() {
-  device->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+  device->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_RGBA(0, 0, 0, 0), 1.0f, 0);
 
   // anti aliasing
-  device->SetRenderState(D3DRS_MULTISAMPLEANTIALIAS , antialias);
+  device->SetRenderState(D3DRS_MULTISAMPLEANTIALIAS, antialias);
   device->SetRenderState(D3DRS_ANTIALIASEDLINEENABLE, antialias);
   // device->SetRenderState(D3DRS_CLIPPING, true);
 
   // alpha blending
   device->SetRenderState(D3DRS_ALPHABLENDENABLE, alpha_blending);
   if (alpha_blending) {
-  device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_BLENDDIFFUSEALPHA);
+    device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_BLENDDIFFUSEALPHA);
     device->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
     device->SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
     device->SetRenderState(D3DRS_ALPHATESTENABLE, false);
@@ -61,6 +60,8 @@ void d3d9_renderer_t::begin() {
 
 void d3d9_renderer_t::end() {
   device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
+  // D3DVIEWPORT9 viewport = { 1, 1, 500, 500, 0.0f, 1.0f };
+  // device->SetViewport(&this->viewport);
 
   for (auto renderable : render_list->renderables) {
     switch (renderable->renderable_type) {
@@ -76,13 +77,32 @@ void d3d9_renderer_t::end() {
       {
 
         primitive_t* primitive = (primitive_t*)renderable;
+        d3d9_texture_t* texture = (d3d9_texture_t*)primitive->texture;
 
-        device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
-        device->SetTexture(0, ((d3d9_texture_t*)primitive->texture)->texture);
+        device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX2);
+        device->SetTexture(0, texture->texture);
 
-        if (primitive->texture->format == FORMAT_ALPHA)
+        if (texture->format == FORMAT_ALPHA)
           device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
         
+        if (texture->alpha_masked) {
+          device->SetTexture(0, texture->texture);
+          device->SetTexture(1, ((d3d9_texture_t*)texture->mask)->texture);
+          device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+          device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+          device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+          device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+          device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+          device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+
+          // Use the color from the previous texture, and blend the alpha from the mask.
+          device->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+          device->SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_CURRENT);
+          device->SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+          device->SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+          device->SetTextureStageState(1, D3DTSS_ALPHAARG2, D3DTA_CURRENT);
+        }
+
         device->DrawPrimitiveUP((D3DPRIMITIVETYPE)primitive->primitive_type, primitive->primitive_count(), 
           primitive->vertices_textured.data(), sizeof(textured_vertex_t));
 
@@ -90,6 +110,7 @@ void d3d9_renderer_t::end() {
         device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
         
         device->SetTexture(0, nullptr);
+        device->SetTexture(1, nullptr);
         device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
         break;
       }
@@ -181,12 +202,21 @@ inline void d3d9_renderer_t::rect_gradient(float x, float y, float w, float h, c
 
 void d3d9_renderer_t::rect_textured(float x, float y, texture_t* texture, color_t color) {
   const D3DCOLOR color_d3d = to_d3d(color);
-  textured_vertex_t v[] = {
-      { x, y + texture->height, 0.0f, 1.0f, color_d3d, 0.0f, 1.0f},
-      { x, y, 0.0f, 1.0f, color_d3d, 0.0f, 0.0f},
-      { x + texture->width, y + texture->height, 0.0f, 1.0f, color_d3d, 1.0f, 1.0f},
-      { x + texture->width, y, 0.0f, 1.0f, color_d3d, 1.0f, 0.0f}
-  };
+  // if (texture->alpha_masked) {
+  //   two_textured_vertex_t v[] = {
+  //     { x, y + texture->height, 0.0f, 1.0f, color_d3d, 0.0f, 1.0f, 0.0f, 1.0f},
+  //     { x, y, 0.0f, 1.0f, color_d3d, 0.0f, 0.0f, 0.0f, 0.0f},
+  //     { x + texture->width, y + texture->height, 0.0f, 1.0f, color_d3d, 1.0f, 1.0f, 1.0f, 1.0f},
+  //     { x + texture->width, y, 0.0f, 1.0f, color_d3d, 1.0f, 0.0f, 1.0f, 0.0f}
+  //   };
+  // } else {
+    textured_vertex_t v[] = {
+        { x, y + texture->height, 0.0f, 1.0f, color_d3d, 0.0f, 1.0f},
+        { x, y, 0.0f, 1.0f, color_d3d, 0.0f, 0.0f},
+        { x + texture->width, y + texture->height, 0.0f, 1.0f, color_d3d, 1.0f, 1.0f},
+        { x + texture->width, y, 0.0f, 1.0f, color_d3d, 1.0f, 0.0f}
+    };
+  // }
   
   render_list->add(new primitive_t(PT_TRIANGLESTRIP, v, 4, texture));
 }
@@ -223,11 +253,59 @@ void d3d9_renderer_t::circle(float x, float y, float radius, color_t color, int 
 
 inline texture_t* d3d9_renderer_t::create_texture(int width, int height, texture_format_t format) {
   d3d9_texture_t* tex = new d3d9_texture_t();
-  device->CreateTexture(width, height, 1, D3DUSAGE_DYNAMIC, format == FORMAT_ALPHA ? D3DFMT_A8 : D3DFMT_A8R8G8B8, 
-    D3DPOOL_DEFAULT, &tex->texture, nullptr);
+  if (FAILED(device->CreateTexture(width, height, 1, D3DUSAGE_DYNAMIC, 
+  format == FORMAT_ALPHA ? D3DFMT_A8 : D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &tex->texture, nullptr)))
+    kitty::error("Failed to create texture");
   tex->width = width;
   tex->height = height;
   tex->format = format;
   tex->initialized = true;
+  textures.push_back(tex);
   return tex;
+}
+
+IDirect3DTexture9* render_target_texture = nullptr;
+IDirect3DSurface9* texture_surface;
+IDirect3DSurface9* screen_surface;
+void d3d9_renderer_t::begin_texture_render(int width, int height, texture_format_t format) {
+  device->GetRenderTarget(0, &screen_surface);
+  device->CreateTexture(width, height, 0, D3DUSAGE_RENDERTARGET, format == FORMAT_ALPHA ? D3DFMT_A8 : D3DFMT_A8R8G8B8, 
+    D3DPOOL_DEFAULT, &render_target_texture, NULL);
+  render_target_texture->GetSurfaceLevel(0, &texture_surface);
+  device->SetRenderTarget(0, texture_surface);
+}
+
+texture_t* d3d9_renderer_t::end_texture_render() {
+  device->SetRenderTarget(0, screen_surface);
+  
+  // create texture
+  D3DSURFACE_DESC desc;
+  render_target_texture->GetLevelDesc(0, &desc);
+  d3d9_texture_t* tex = new d3d9_texture_t();
+  tex->texture = render_target_texture;
+  tex->width = desc.Width;
+  tex->height = desc.Height;
+  tex->format = desc.Format == D3DFMT_A8 ? FORMAT_ALPHA : FORMAT_ARGB;
+  tex->initialized = true;
+  return tex;
+}
+
+void d3d9_renderer_t::set_viewport(int x, int y, int width, int height) {
+  this->viewport.X = x;
+  this->viewport.Y = y;
+  this->viewport.Width = width;
+  this->viewport.Height = height;
+
+  // unfortunetly, d3d9 is retarded
+  // d3dpp.BackBufferWidth = width;
+  // d3dpp.BackBufferHeight = height;
+  // for (auto& texture : textures) {
+  //   if (texture->initialized) texture->texture->Release();
+  // }
+  // device->Reset(&d3dpp);
+  // for (auto& texture : textures) {
+  //   device->CreateTexture(texture->width, texture->height, 1, D3DUSAGE_DYNAMIC, 
+  //   texture->format == FORMAT_ALPHA ? D3DFMT_A8 : D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture->texture, nullptr);
+  //   // texture->initialized = false;
+  // }
 }
