@@ -9,8 +9,10 @@ set(CMAKE_CXX_STANDARD 20)
 find_package(DirectX REQUIRED)
 find_package(OpenGL)
 
-file(GLOB_RECURSE SRC "${CMAKE_CURRENT_SOURCE_DIR}/examples/testing" *.cpp *.hpp)
-
+# set(SRC  ) # for header only mode
+file(GLOB_RECURSE SRC_EXAMPLE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp)
+list(APPEND SRC ${SRC_EXAMPLE})
+message("${SRC}")
 add_executable(testing ${SRC})
 
 add_prebuild_command(testing d3d9)

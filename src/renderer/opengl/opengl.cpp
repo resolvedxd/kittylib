@@ -5,8 +5,6 @@
 #include <gl/GL.h>
 #include <gl/GLU.h>
 #include "opengl.hpp"
-#include "../../kitty.hpp"
-#include "../../os/windows.hpp" // TODO: make this os-independant
 
 opengl_renderer_t::opengl_renderer_t() {
   PIXELFORMATDESCRIPTOR pfd;
@@ -50,7 +48,7 @@ void opengl_renderer_t::end() {
       switch (renderable->renderable_type) {
       case PRIMITIVE:
       {
-        primitive_t* primitive = (primitive_t*)renderable;
+        primitive_t<kvertex_t>* primitive = (primitive_t<kvertex_t>*)renderable;
         // printf("primitive type: %d count: %d\n", primitive->primitive_type, primitive->primitive_count());
         glVertexPointer(primitive->primitive_count(), GL_FLOAT, 0, primitive->vertices.data());
         glDrawArrays(primitive->opengl_primitive(), 0, primitive->primitive_count());
@@ -61,5 +59,5 @@ void opengl_renderer_t::end() {
 }
 
 void opengl_renderer_t::line(float x1, float y1, float x2, float y2, color_t color) {
-  render_list->add();
+  // render_list->add();
 }

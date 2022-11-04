@@ -8,6 +8,7 @@
 #include "../../utils/color.hpp"
 #include "../renderer.hpp"
 #include "../../utils/renderlist.hpp"
+#include "../../os/os.hpp"
 
 class opengl_renderer_t : public renderer_t 
 {

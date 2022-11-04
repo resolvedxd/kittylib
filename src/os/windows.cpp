@@ -1,4 +1,5 @@
-#include "windows.hpp"
+#include <cstring>
+#include "os.hpp"
 
 bool allow_hiding_cursor = true;
 
@@ -60,6 +61,10 @@ HWND kitty::win32::create_window(const char* title, int width, int height, WNDCL
 
   kitty::win32::hwnd = CreateWindowA(classname, title, WS_OVERLAPPEDWINDOW,
     CW_USEDEFAULT, CW_USEDEFAULT, width, height, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
+  if (!kitty::win32::hwnd) {
+    kitty::os::error("Failed to create window");
+    return nullptr;
+  }
   
   ShowWindow(kitty::win32::hwnd, SW_SHOW);
   #ifndef _DEBUG
@@ -111,11 +116,11 @@ kitty_msg_t kitty::win32::handle_event(HWND hwnd) {
   }
 }
 
-inline bool kitty::win32::should_run() {
+bool kitty::win32::should_run() {
   return kitty::win32::msg.message != WM_QUIT;
 }
 
-inline bool kitty::win32::should_render() {
+bool kitty::win32::should_render() {
   return true/*kitty::win32::msg.message == WM_PAINT*/;
 }
 

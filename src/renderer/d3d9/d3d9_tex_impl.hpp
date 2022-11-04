@@ -1,3 +1,5 @@
+#pragma once
+#include <d3d9.h>
 class d3d9_texture_t : public texture_t {
   public:
   LPDIRECT3DTEXTURE9 texture;

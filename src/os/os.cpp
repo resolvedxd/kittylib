@@ -1,9 +1,6 @@
 #pragma once
 #include <cstdio>
-#include "../kitty.hpp"
-#ifdef _WIN32
-#include "windows.hpp"
-#endif
+#include "os.hpp"
 
 // TODO: add support for more os's
 void kitty::os::create_window(const char* title, int width, int height) {
@@ -40,7 +37,7 @@ int kitty::os::message_box(const char* title, const char* message, kitty_message
   #endif
 }
 
-void kitty::error(const char* message) {
+void kitty::os::error(const char* message) {
   kitty::os::message_box("Error", message, MESSAGEBOX_ERROR);
   printf("ERROR! %s\n", message);
   exit(1);

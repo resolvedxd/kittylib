@@ -31,6 +31,7 @@ class renderer_t
   virtual void rect_gradient(float x, float y, float width, float height, color_t left_top, color_t right_bottom,
     bool horizontal = true) = 0;
   virtual void rect_textured(float x, float y, texture_t* texture, color_t color = color_t(255, 255, 255)) = 0;
+  virtual void rect_rounded(float x, float y, float width, float height, float radius, color_t color, int segments) = 0;
   virtual void circle(float x, float y, float radius, color_t color, int segments) = 0;
   virtual void circle_filled(float x, float y, float radius, color_t color, int segments) = 0;
   virtual void triangle(float x, float y, float w, float h, float angle, color_t color) = 0;

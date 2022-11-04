@@ -1,8 +1,8 @@
-#pragma once
+// #pragma once
 #include <vector>
 #include <typeinfo>
 #include "../renderer/texture.hpp"
-#include "../renderer/d3d9/d3d9_tex_impl.hpp"
+// #include "../renderer/d3d9/d3d9_tex_impl.hpp"
 
 struct vertex_t {
   float x, y, z, rhw;
@@ -24,7 +24,8 @@ struct two_textured_vertex_t {
 
 enum renderable_type_t {
   PRIMITIVE,
-  TEXTURE
+  TEXTURE,
+  MASK, // two textures
 };
 
 class renderable_t {
@@ -32,24 +33,22 @@ class renderable_t {
   renderable_type_t renderable_type;
 };
 
+// a template that allows us to store different types of vertexes in the same vector
+template <typename T>
 class primitive_t : public renderable_t {
   public:
-  primitive_t(primitive_type_t type, vertex_t* pvertices, int vertex_count) {
-    this->renderable_type = PRIMITIVE;
+  primitive_t(primitive_type_t type, T* pvertices, int vertex_count, texture_t* texture = nullptr) {
+    if (typeid(T) == typeid(vertex_t)) {
+      this->renderable_type = PRIMITIVE;
+    } else if (typeid(T) == typeid(textured_vertex_t)) {
+      this->renderable_type = TEXTURE;
+    } else if (typeid(T) == typeid(two_textured_vertex_t)) {
+      this->renderable_type = MASK;
+    }
     this->primitive_type = type;
     
     this->vertices.resize(vertex_count);
-    std::memcpy(this->vertices.data(), pvertices, sizeof(vertex_t) * vertex_count);
-    this->vertex_count = vertex_count;
-
-    this->texture = nullptr;    
-  };
-  primitive_t(primitive_type_t type, textured_vertex_t* pvertices, int vertex_count, texture_t* texture) {
-    this->renderable_type = TEXTURE;
-    this->primitive_type = type;
-    
-    this->vertices_textured.resize(vertex_count);
-    std::memcpy(this->vertices_textured.data(), pvertices, sizeof(textured_vertex_t) * vertex_count);
+    std::memcpy(this->vertices.data(), pvertices, sizeof(T) * vertex_count);
     this->vertex_count = vertex_count;
 
     this->texture = texture;
@@ -66,8 +65,7 @@ class primitive_t : public renderable_t {
     // delete texture;
   };
   primitive_type_t primitive_type;
-  std::vector<vertex_t> vertices;
-  std::vector<textured_vertex_t> vertices_textured; // this is bad, i should make a second primitive type in the future
+  std::vector<T> vertices;
   int vertex_count;
   texture_t* texture;
 
@@ -124,13 +122,28 @@ class render_list_t {
   public:
   std::vector<renderable_t*> renderables;
 
-  void add(primitive_t* primitive) {
+  void add(primitive_t<vertex_t>* primitive) {
+    renderables.push_back(primitive);
+  }
+  void add(primitive_t<textured_vertex_t>* primitive) {
+    renderables.push_back(primitive);
+  }
+  void add(primitive_t<two_textured_vertex_t>* primitive) {
     renderables.push_back(primitive);
   }
   void empty() {
     for(auto renderable : renderables) {
-      primitive_t* primitive = (primitive_t*)renderable;
-      delete primitive;
+      // if (typeid(*renderable) == typeid(primitive_t<vertex_t>)) {
+      //   delete (primitive_t<vertex_t>*)renderable;
+      // } else if (typeid(*renderable) == typeid(primitive_t<textured_vertex_t>)) {
+      //   delete (primitive_t<textured_vertex_t>*)renderable;
+      // } else if (typeid(*renderable) == typeid(primitive_t<two_textured_vertex_t>)) {
+      //   delete (primitive_t<two_textured_vertex_t>*)renderable;
+      // } else {
+      //   // i guess just assume its the biggest type available... (this is not safe)
+      //   delete (primitive_t<two_textured_vertex_t>*)renderable;
+      // }
+      delete (primitive_t<two_textured_vertex_t>*)renderable;
     }
     renderables.clear();
   }
