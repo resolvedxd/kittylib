@@ -91,7 +91,7 @@ kitty_msg_t kitty::win32::handle_event(HWND hwnd) {
     // Mouse events
     case WM_MOUSEMOVE:
       update_cursor_pos(msg);
-      return kitty_msg_t { MOUSE_MOVE, kitty::os::cursor_x, kitty::os::cursor_y };
+      return kitty_msg_t { MOUSE_MOVE, kitty::os::cursor_x, kitty::os::cursor_y, (int)msg.wParam };
     case WM_LBUTTONDOWN:
     case WM_LBUTTONDBLCLK:
       update_cursor_pos(msg);

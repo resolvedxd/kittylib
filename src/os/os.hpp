@@ -1,5 +1,13 @@
 #pragma once
 
+#ifdef _WIN32
+#define NOMINMAX
+#include <Windows.h>
+#include <windowsx.h>
+#include <string>
+#include "keyboard.hpp"
+#endif
+
 enum kitty_messagebox_type {
   MESSAGEBOX_OK,
   MESSAGEBOX_YESNO,
@@ -20,7 +28,24 @@ struct kitty_msg_t {
   msg_type type;
   int a1;
   int a2;
+  int a3 = 0;
 };
+
+#ifdef _WIN32
+namespace kitty::win32 {
+  inline MSG msg;
+  inline WNDPROC wndproc;
+  inline HWND hwnd;
+
+  HWND create_window(const char* title, int width, int height, WNDCLASSEX* wndclass = nullptr, 
+    const char* classname = "test");
+  kitty_msg_t handle_event(HWND hwnd = nullptr);
+  bool should_run();
+  bool should_render();
+
+  std::string keycode_to_text(kitty_keycode keycode);
+} // namespace kitty::win32
+#endif _WIN32
 
 namespace kitty::os {
     void create_window(const char* title, int width, int height);
@@ -39,23 +64,3 @@ namespace kitty::os {
     // (implementing this is entirly optional)
     inline void(*request_render)(int width, int height);
 }
-
-#ifdef _WIN32
-#include <Windows.h>
-#include <windowsx.h>
-#include <string>
-#include "keyboard.hpp"
-namespace kitty::win32 {
-  inline MSG msg;
-  inline WNDPROC wndproc;
-  inline HWND hwnd;
-
-  HWND create_window(const char* title, int width, int height, WNDCLASSEX* wndclass = nullptr, 
-    const char* classname = "test");
-  kitty_msg_t handle_event(HWND hwnd = nullptr);
-  bool should_run();
-  bool should_render();
-
-  std::string keycode_to_text(kitty_keycode keycode);
-} // namespace kitty::win32
-#endif _WIN32

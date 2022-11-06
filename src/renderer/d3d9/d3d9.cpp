@@ -5,6 +5,7 @@
 #include <vector>
 #include <d3d9.h>
 #include "d3d9.hpp"
+#include "../../utils/math.hpp"
 
 d3d9_renderer_t::d3d9_renderer_t() {
   LPDIRECT3D9 d3d = Direct3DCreate9(D3D_SDK_VERSION);
@@ -14,6 +15,8 @@ d3d9_renderer_t::d3d9_renderer_t() {
   d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
   d3dpp.hDeviceWindow = kitty::win32::hwnd;
   d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+  d3dpp.MultiSampleType = D3DMULTISAMPLE_4_SAMPLES;
+  d3dpp.MultiSampleQuality = 0;
 
   HRESULT hr = d3d->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, kitty::win32::hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, 
     &this->device);
@@ -80,24 +83,6 @@ void d3d9_renderer_t::end() {
 
         if (texture->format == FORMAT_ALPHA)
           device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
-        
-        // if (texture->alpha_masked) {
-        //   device->SetTexture(0, texture->texture);
-        //   device->SetTexture(1, ((d3d9_texture_t*)texture->mask)->texture);
-        //   device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-        //   device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-        //   device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-        //   device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
-        //   device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-        //   device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
-
-        //   // Use the color from the previous texture, and blend the alpha from the mask.
-        //   device->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-        //   device->SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_CURRENT);
-        //   device->SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
-        //   device->SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-        //   device->SetTextureStageState(1, D3DTSS_ALPHAARG2, D3DTA_CURRENT);
-        // }
 
         device->DrawPrimitiveUP((D3DPRIMITIVETYPE)primitive->primitive_type, primitive->primitive_count(), 
           primitive->vertices.data(), sizeof(textured_vertex_t));
@@ -251,13 +236,94 @@ void d3d9_renderer_t::rect_textured(float x, float y, texture_t* texture, color_
 // Gets the value of pi for rendering circles
 inline constexpr float pi = std::numbers::pi_v<float>;
 
-void d3d9_renderer_t::rect_rounded(float x, float y, float width, float height, float radius, color_t color, int segments) {
+static inline constexpr void rect_rounded_verts(std::vector<vertex_t> &v, float x, float y, float width, float height, 
+    float rad_leftup, float rad_rightup, float rad_leftdown, float rad_rightdown,
+    D3DCOLOR color_d3d, int segments, float smoothness, bool multisample_offset) {
+  for (int i = 0; i < segments; i++) {
+    float p0[] = { x, y + rad_leftup  };
+    float p1[] = { x, y + rad_leftup * smoothness };
+    float p2[] = { x + rad_leftup * smoothness, y };
+    float p3[] = { x + rad_leftup, y };
+    if (multisample_offset) {
+      p0[0] += 0.5f;
+      p3[1] += 0.5f;
+    }
+
+    v[i] = {
+      kmath::bezier(p0[0], p1[0], p2[0], p3[0], i / (float)segments),
+      kmath::bezier(p0[1], p1[1], p2[1], p3[1], i / (float)segments),
+      0.0f, 1.0f, color_d3d
+    };
+
+    p0[0] = x + width - rad_rightup; p0[1] = y;
+    p1[0] = x + width - rad_rightup * smoothness; p1[1] = y;
+    p2[0] = x + width; p2[1] = y + rad_rightup * smoothness;
+    p3[0] = x + width; p3[1] = y + rad_rightup;
+    if (multisample_offset) {
+      p0[1] += 0.5f;
+      p3[0] -= 0.5f;
+    }
+
+    v[i + segments] = {
+      kmath::bezier(p0[0], p1[0], p2[0], p3[0], i / (float)segments),
+      kmath::bezier(p0[1], p1[1], p2[1], p3[1], i / (float)segments),
+      0.0f, 1.0f, color_d3d
+    };
+
+    p0[0] = x + width; p0[1] = y + height - rad_rightdown;
+    p1[0] = x + width; p1[1] = y + height - rad_rightdown * smoothness;
+    p2[0] = x + width - rad_rightdown * smoothness; p2[1] = y + height;
+    p3[0] = x + width - rad_rightdown; p3[1] = y + height;
+    if (multisample_offset) {
+      p0[0] -= 0.5f;
+      p3[1] -= 0.5f;
+    }
+
+    v[i + segments * 2] = {
+      kmath::bezier(p0[0], p1[0], p2[0], p3[0], i / (float)segments),
+      kmath::bezier(p0[1], p1[1], p2[1], p3[1], i / (float)segments),
+      0.0f, 1.0f, color_d3d
+    };
+
+    p0[0] = x + rad_leftdown; p0[1] = y + height;
+    p1[0] = x + rad_leftdown * smoothness; p1[1] = y + height;
+    p2[0] = x; p2[1] = y + height - rad_leftdown * smoothness;
+    p3[0] = x; p3[1] = y + height - rad_leftdown;
+    if (multisample_offset) {
+      p0[1] -= 0.5f;
+      p3[0] += 0.5f;
+    }
+
+    v[i + segments * 3] = {
+      kmath::bezier(p0[0], p1[0], p2[0], p3[0], i / (float)segments),
+      kmath::bezier(p0[1], p1[1], p2[1], p3[1], i / (float)segments),
+      0.0f, 1.0f, color_d3d
+    };
+  }
+}
+
+void d3d9_renderer_t::rect_rounded(float x, float y, float width, float height, float rad_leftup, float rad_rightup, 
+float rad_leftdown, float rad_rightdown, color_t color, int segments, float smoothness) {
   D3DCOLOR color_d3d = to_d3d(color);
-  std::vector<vertex_t> v(segments * 4 + 4);
+  std::vector<vertex_t> v(segments * 4 + 1);
 
+  rect_rounded_verts(v, x, y, width, height, rad_leftup, rad_rightup, rad_leftdown, rad_rightdown, color_d3d, segments, 
+  smoothness, false);
 
+  v[segments * 4] = v[0];
 
-  render_list->add(new primitive_t<vertex_t>(PT_TRIANGLEFAN, v.data(), segments * 4 + 4));
+  render_list->add(new primitive_t<vertex_t>(PT_LINESTRIP, v.data(), v.size()));
+}
+
+void d3d9_renderer_t::rect_rounded_filled(float x, float y, float width, float height, float rad_leftup, 
+float rad_rightup, float rad_leftdown, float rad_rightdown, color_t color, int segments, float smoothness) {
+  D3DCOLOR color_d3d = to_d3d(color);
+  std::vector<vertex_t> v(segments * 4);
+
+  rect_rounded_verts(v, x, y, width, height, rad_leftup, rad_rightup, rad_leftdown, rad_rightdown, color_d3d, segments, 
+  smoothness, true);
+
+  render_list->add(new primitive_t<vertex_t>(PT_TRIANGLEFAN, v.data(), v.size()));
 }
 
 void d3d9_renderer_t::circle_filled(float x, float y, float radius, color_t color, int segments) {

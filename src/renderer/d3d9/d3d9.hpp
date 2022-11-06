@@ -1,5 +1,5 @@
 #pragma once
-#include <Windows.h> // d3d9 is windows only anyway..
+// #include <Windows.h> // d3d9 is windows only anyway..
 #include <d3d9.h>
 #include "../renderer.hpp"
 #include "../../utils/renderlist.hpp"
@@ -34,7 +34,12 @@ class d3d9_renderer_t : public renderer_t {
   virtual void rect_gradient(float x, float y, float width, float height, color_t left_top, color_t right_bottom,
     bool horizontal = true);
   virtual void rect_textured(float x, float y, texture_t* texture, color_t color = color_t(255, 255, 255));
-  virtual void rect_rounded(float x, float y, float width, float height, float radius, color_t color, int segments);
+  virtual void rect_rounded(float x, float y, float width, float height, 
+  float rad_leftup, float rad_rightup, float rad_leftdown, float rad_rightdown, color_t color, int segments = 16,
+  float smoothness = 0.4f);
+  virtual void rect_rounded_filled(float x, float y, float width, float height, 
+  float rad_leftup, float rad_rightup, float rad_leftdown, float rad_rightdown, color_t color, int segments = 16,
+  float smoothness = 0.4f);
   virtual void circle(float x, float y, float radius, color_t color, int segments);
   virtual void circle_filled(float x, float y, float radius, color_t color, int segments);
   virtual void triangle(float x, float y, float w, float h, float angle, color_t color) {};
