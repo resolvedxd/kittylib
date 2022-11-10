@@ -15,7 +15,6 @@ struct hsv_t {
     int a;
 };
 
-// TODO: use unsigned char instead of int?
 struct color_t {
     unsigned char a, r, g, b;
     color_t() = default;

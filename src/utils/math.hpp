@@ -43,7 +43,7 @@ namespace kmath {
         return result;
     }
 
-    // TODO: implement this with fast bezier (midpoint quadratic bezier)
+    // TODO: use faster bezier algorithm
     template <typename T>
     static constexpr inline T bezier(T p0, T p1, T p2, T p3, float t) {
       return pown<T>(1 - t, 3) * p0 + 3 * t * pown<T>(1 - t, 2) * p1 + 3 * pown<T>(t, 2) * (1 - t) * p2 + pown<T>(t, 3) * p3;

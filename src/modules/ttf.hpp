@@ -16,7 +16,6 @@ struct glyph_t {
 
 class font_t {
   private:
-  // TODO: check if i can use unordered_map instead of map
   unsigned char* file_buffer;
   public:
   bool kerning = true;

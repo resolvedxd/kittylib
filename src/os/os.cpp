@@ -2,7 +2,6 @@
 #include <cstdio>
 #include "os.hpp"
 
-// TODO: add support for more os's
 void kitty::os::create_window(const char* title, int width, int height) {
     #ifdef _WIN32
     kitty::win32::create_window(title, width, height);

@@ -56,3 +56,4 @@ renderer->rect_textured(0, 0, texture);
 - [ ] Free color_t conversion to UINT32
 - [x] Fix crashing when alot of frames are being rendered in a short period of time
 - [ ] Look into faster ways to calculate bezier curves
+- [ ] Add bezier function with 1 control point

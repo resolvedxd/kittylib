@@ -351,7 +351,6 @@ void d3d9_renderer_t::circle(float x, float y, float radius, color_t color, int 
   }
   v[segments] = { x + radius, y, 0.0f, 1.0f, color_d3d };
 
-  // TODO: evaluate the type of the vector for the primitive_t template automatically
   render_list->add(new primitive_t<vertex_t>(PT_LINESTRIP, v.data(), segments + 1));
 }
 
